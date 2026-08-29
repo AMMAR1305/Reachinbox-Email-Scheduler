@@ -22,7 +22,9 @@ import {
   Image as ImageIcon,
   FileText,
   Plus,
+  Check,
 } from 'lucide-react';
+
 
 interface AttachedFile {
   id: string;
@@ -42,7 +44,28 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  const [fromEmail, setFromEmail] = useState(user?.email || '');
+  const [fromEmailList, setFromEmailList] = useState<string[]>(() => {
+    const saved = localStorage.getItem('reachinbox_from_emails');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    const defaultList = [
+      user?.email || 'md.ammar1305@gmail.com',
+      'kayleigh67@ethereal.email',
+      'support@reachinbox.ai',
+      'team@reachinbox.ai',
+    ].filter(Boolean);
+    return Array.from(new Set(defaultList));
+  });
+
+  const [fromEmail, setFromEmail] = useState<string>(() => user?.email || 'md.ammar1305@gmail.com');
+  const [isFromDropdownOpen, setIsFromDropdownOpen] = useState(false);
+  const [newFromInput, setNewFromInput] = useState('');
+  const [isAddingFromEmail, setIsAddingFromEmail] = useState(false);
+
   const [recipients, setRecipients] = useState<string[]>([]);
   const [recipientInput, setRecipientInput] = useState('');
   const [subject, setSubject] = useState('');
@@ -55,6 +78,22 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleAddNewFromEmail = () => {
+    const trimmed = newFromInput.trim();
+    if (trimmed && !fromEmailList.includes(trimmed)) {
+      const updated = [...fromEmailList, trimmed];
+      setFromEmailList(updated);
+      setFromEmail(trimmed);
+      localStorage.setItem('reachinbox_from_emails', JSON.stringify(updated));
+    } else if (trimmed) {
+      setFromEmail(trimmed);
+    }
+    setNewFromInput('');
+    setIsAddingFromEmail(false);
+    setIsFromDropdownOpen(false);
+  };
+
 
   const handleAddRecipient = (e: React.KeyboardEvent) => {
     if ((e.key === 'Enter' || e.key === ',') && recipientInput.trim()) {
@@ -322,17 +361,107 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
 
       {/* Form Fields */}
       <div className="space-y-4">
-        {/* From Row (User Defined Input) */}
-        <div className="flex items-center gap-6 border-b border-gray-100 pb-3">
+        {/* From Row with Interactive Dropdown (v) */}
+        <div className="flex items-center gap-6 border-b border-gray-100 pb-3 relative">
           <label className="w-14 text-xs font-medium text-gray-400 shrink-0">From</label>
-          <input
-            type="text"
-            value={fromEmail}
-            onChange={(e) => setFromEmail(e.target.value)}
-            placeholder="e.g. sender@company.com or Your Name <sender@company.com>"
-            className="flex-1 text-xs text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent font-medium"
-          />
+
+          <div className="relative flex-1">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsFromDropdownOpen(!isFromDropdownOpen)}
+                className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#f4f6f8] hover:bg-gray-200/80 border border-gray-200 text-xs font-medium text-gray-900 transition-all shadow-sm group"
+              >
+                <span className="font-semibold text-gray-900">{fromEmail}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-500 group-hover:text-gray-900 transition-transform ${isFromDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <span className="text-[11px] text-gray-400 hidden sm:inline">
+                (Click to select sender account)
+              </span>
+            </div>
+
+            {/* Dropdown Menu */}
+            {isFromDropdownOpen && (
+              <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-2xl border border-gray-200 shadow-2xl py-2 z-50 space-y-1">
+                <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Select Sender Email
+                </div>
+
+                <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+                  {fromEmailList.map((emailItem) => (
+                    <button
+                      key={emailItem}
+                      type="button"
+                      onClick={() => {
+                        setFromEmail(emailItem);
+                        setIsFromDropdownOpen(false);
+                      }}
+                      className={`w-full px-3.5 py-2.5 text-xs flex items-center justify-between hover:bg-gray-50 transition-colors text-left ${
+                        fromEmail === emailItem ? 'bg-emerald-50 text-emerald-800 font-semibold' : 'text-gray-700'
+                      }`}
+                    >
+                      <span className="truncate">{emailItem}</span>
+                      {fromEmail === emailItem && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-2" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Add Custom Email Option */}
+                <div className="pt-2 border-t border-gray-100 px-3">
+                  {isAddingFromEmail ? (
+                    <div className="space-y-2 pt-1 pb-1">
+                      <input
+                        type="email"
+                        value={newFromInput}
+                        onChange={(e) => setNewFromInput(e.target.value)}
+                        placeholder="e.g. sales@company.com"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddNewFromEmail();
+                          }
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs text-gray-800 focus:outline-none focus:border-emerald-500"
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddingFromEmail(false);
+                            setNewFromInput('');
+                          }}
+                          className="px-2.5 py-1 text-[11px] text-gray-500 hover:text-gray-700 font-medium"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddNewFromEmail}
+                          disabled={!newFromInput.trim()}
+                          className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition-colors disabled:opacity-50"
+                        >
+                          Add & Select
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingFromEmail(true)}
+                      className="w-full py-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Add new sender email...</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
 
 
         {/* To Row (Recipients + Upload List) */}
