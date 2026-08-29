@@ -120,7 +120,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                   </div>
                 </div>
 
-                {/* Right: Ethereal Preview + Star Icon */}
+                {/* Right: Preview + Star Icon */}
                 <div className="flex items-center gap-2">
                   {item.previewUrl && (
                     <a
@@ -129,12 +129,13 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       className="px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-semibold flex items-center gap-1 opacity-90 hover:opacity-100 transition-all shadow-sm"
-                      title="Open in Ethereal Sandbox"
+                      title="Open Email Preview"
                     >
-                      <span>Ethereal Preview</span>
+                      <span>Preview</span>
                       <span className="text-xs">↗</span>
                     </a>
                   )}
+
 
                   <button
                     onClick={(e) => {
