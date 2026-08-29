@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Star, Archive, Trash2, ChevronDown, Zap } from 'lucide-react';
+import { ArrowLeft, Star, Archive, Trash2, ChevronDown, Zap, ExternalLink, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface EmailDetailPageProps {
@@ -13,6 +13,7 @@ interface EmailDetailPageProps {
     scheduledAt?: string;
     createdAt?: string;
     previewUrl?: string | null;
+    etherealMsgId?: string | null;
   };
   onBack: () => void;
 }
@@ -41,15 +42,17 @@ export const EmailDetailPage: React.FC<EmailDetailPageProps> = ({ email, onBack 
 
   const subjectText = email.subject || 'No Subject';
   const bodyText = email.body || '';
+  const etherealUrl = email.previewUrl || 'https://ethereal.email/messages';
 
   return (
     <div className="bg-white min-h-screen flex-1 p-6 max-w-5xl mx-auto space-y-6">
       {/* Top Header Navigation */}
-      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between pb-4 border-b border-gray-100 flex-wrap gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={onBack}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors shrink-0"
+            title="Back to list"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -58,14 +61,27 @@ export const EmailDetailPage: React.FC<EmailDetailPageProps> = ({ email, onBack 
           </h1>
         </div>
 
-        <div className="flex items-center gap-4 text-gray-400">
-          <button className="hover:text-amber-400 transition-colors">
+        <div className="flex items-center gap-3 text-gray-400 flex-wrap">
+          {/* View in Ethereal Dashboard Button */}
+          <a
+            href={etherealUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+            title="Open Ethereal Email Preview"
+          >
+            <Mail className="w-3.5 h-3.5 text-emerald-600" />
+            <span>View in Ethereal Dashboard</span>
+            <ExternalLink className="w-3 h-3 text-emerald-600 ml-0.5" />
+          </a>
+
+          <button className="hover:text-amber-400 transition-colors p-1" title="Star">
             <Star className="w-4 h-4" />
           </button>
-          <button className="hover:text-gray-700 transition-colors">
+          <button className="hover:text-gray-700 transition-colors p-1" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button className="hover:text-rose-500 transition-colors">
+          <button className="hover:text-rose-500 transition-colors p-1" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
           {user?.avatar ? (
@@ -80,6 +96,33 @@ export const EmailDetailPage: React.FC<EmailDetailPageProps> = ({ email, onBack 
             </div>
           )}
         </div>
+      </div>
+
+      {/* Ethereal Banner Notification */}
+      <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg shrink-0">
+            <Mail className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-bold text-emerald-900">Ethereal Sandbox Delivery: </span>
+            <span className="text-emerald-700">
+              {email.previewUrl
+                ? 'Live HTML email rendering is ready on Ethereal.'
+                : 'Delivered through Ethereal SMTP test gateway.'}
+            </span>
+          </div>
+        </div>
+
+        <a
+          href={etherealUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-bold text-emerald-800 hover:text-emerald-950 underline shrink-0"
+        >
+          <span>Open Ethereal Preview</span>
+          <ExternalLink className="w-3 h-3" />
+        </a>
       </div>
 
       {/* Sender Info Row */}
@@ -142,3 +185,4 @@ export const EmailDetailPage: React.FC<EmailDetailPageProps> = ({ email, onBack 
     </div>
   );
 };
+
