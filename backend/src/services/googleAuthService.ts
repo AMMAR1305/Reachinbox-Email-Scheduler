@@ -33,37 +33,61 @@ export function getGoogleAuthUrl(): string {
 
 export async function processGoogleCallback(code: string) {
   const client = getOAuth2Client();
+  console.log('[Google Auth] Exchanging authorization code with Google...');
+  
   const { tokens } = await client.getToken(code);
   client.setCredentials(tokens);
 
-  // Fetch Google User Profile
-  const profileRes = await axios.get(
-    'https://www.googleapis.com/oauth2/v3/userinfo',
-    {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
+  let googleId = '';
+  let email = '';
+  let name = '';
+  let avatar: string | null = null;
+
+  // 1. Extract from Google ID Token
+  if (tokens.id_token) {
+    const decoded: any = jwt.decode(tokens.id_token);
+    if (decoded && decoded.email) {
+      googleId = decoded.sub || `google_${decoded.email}`;
+      email = decoded.email.trim().toLowerCase();
+      name = decoded.name || decoded.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      avatar = decoded.picture || null;
+      console.log(`[Google Auth] Successfully identified Google user from ID Token: ${name} <${email}>`);
     }
-  );
-
-  const { sub: googleId, email, name, picture: avatar } = profileRes.data;
-
-  if (!email) {
-    throw new Error('Google OAuth failed: User email not provided by Google');
   }
 
+  // 2. Fallback to Google UserInfo API if needed
+  if (!email && tokens.access_token) {
+    const profileRes = await axios.get(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      }
+    );
 
-  // Upsert User in PostgreSQL
+    googleId = profileRes.data.sub || `google_${profileRes.data.email}`;
+    email = (profileRes.data.email || '').trim().toLowerCase();
+    name = profileRes.data.name || email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+    avatar = profileRes.data.picture || null;
+    console.log(`[Google Auth] Successfully identified Google user from userinfo API: ${name} <${email}>`);
+  }
+
+  if (!email) {
+    throw new Error('Google OAuth failed: User email could not be extracted from Google');
+  }
+
+  // Upsert User in PostgreSQL with their real Google name, email, and avatar
   const user = await prisma.user.upsert({
-    where: { googleId },
+    where: { email },
     update: {
-      email,
-      name: name || email.split('@')[0],
-      avatar: avatar || null,
+      googleId,
+      name,
+      avatar: avatar || undefined,
     },
     create: {
       googleId,
       email,
-      name: name || email.split('@')[0],
-      avatar: avatar || null,
+      name,
+      avatar,
     },
   });
 
@@ -72,6 +96,7 @@ export async function processGoogleCallback(code: string) {
 
   return { user, sessionToken };
 }
+
 
 export function generateJwtToken(userId: string): string {
   return jwt.sign({ userId }, jwtSecret, { expiresIn: '7d' });
