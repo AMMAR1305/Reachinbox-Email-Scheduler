@@ -13,6 +13,20 @@ export async function getTransporter(): Promise<nodemailer.Transporter> {
   const smtpPass = process.env.SMTP_PASS;
 
   if (smtpUser && smtpPass) {
+    if (smtpHost.includes('gmail') || smtpUser.includes('gmail.com')) {
+      cachedTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+      });
+      return cachedTransporter;
+    }
+
     cachedTransporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
@@ -21,9 +35,16 @@ export async function getTransporter(): Promise<nodemailer.Transporter> {
         user: smtpUser,
         pass: smtpPass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
     return cachedTransporter;
   }
+
 
   // Automatically create Ethereal test account if credentials are not configured
   console.log('[Ethereal SMTP] Generating disposable test account...');

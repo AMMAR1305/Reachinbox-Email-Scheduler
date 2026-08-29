@@ -134,27 +134,26 @@ export function startEmailWorker() {
       } catch (error: any) {
         console.error(`[Worker] Send execution failed for EmailJob '${emailJobId}':`, error.message);
 
-        // If attempts exhausted, mark as FAILED
-        if (job.attemptsMade >= (job.opts.attempts || 3) - 1) {
-          await prisma.emailJob.update({
-            where: { id: emailJobId },
-            data: {
-              status: 'FAILED',
-              errorMessage: error.message,
-            },
-          });
+        // Update DB status immediately to FAILED with error message
+        await prisma.emailJob.update({
+          where: { id: emailJobId },
+          data: {
+            status: 'FAILED',
+            errorMessage: error.message,
+          },
+        });
 
-          await sendSlackNotification(
-            emailJob.userId,
-            `🚨 *Email Delivery Failure*: Job to *${emailJob.recipients.join(
-              ', '
-            )}* failed after ${job.attemptsMade + 1} attempts. Error: ${error.message}`
-          );
-        }
+        await sendSlackNotification(
+          emailJob.userId,
+          `🚨 *Email Delivery Failure*: Job to *${emailJob.recipients.join(
+            ', '
+          )}* failed. Error: ${error.message}`
+        );
 
         throw error; // Let BullMQ handle retry mechanism
       }
     },
+
     {
       connection: redisConnection,
       concurrency: 5,

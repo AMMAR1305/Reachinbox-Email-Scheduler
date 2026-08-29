@@ -42,6 +42,7 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
+  const [fromEmail, setFromEmail] = useState(user?.email || '');
   const [recipients, setRecipients] = useState<string[]>([]);
   const [recipientInput, setRecipientInput] = useState('');
   const [subject, setSubject] = useState('');
@@ -58,6 +59,7 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
   const handleAddRecipient = (e: React.KeyboardEvent) => {
     if ((e.key === 'Enter' || e.key === ',') && recipientInput.trim()) {
       e.preventDefault();
+
       const email = recipientInput.trim().toLowerCase();
       if (!recipients.includes(email)) {
         setRecipients([...recipients, email]);
@@ -170,6 +172,7 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
       }
 
       await api.post('/emails/schedule', {
+        fromEmail: fromEmail.trim() || undefined,
         recipients,
         subject,
         body: finalBody,
@@ -177,6 +180,7 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
         hourlyLimit: parseInt(hourlyLimit || '50', 10),
         scheduledAtTime,
       });
+
 
       onSuccess();
     } catch (err: any) {
@@ -318,14 +322,18 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
 
       {/* Form Fields */}
       <div className="space-y-4">
-        {/* From Row */}
-        <div className="flex items-center gap-6">
-          <label className="w-14 text-xs font-medium text-gray-400">From</label>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 text-xs font-medium text-gray-800">
-            <span>{user?.email || 'oliver.brown@domain.io'}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-          </div>
+        {/* From Row (User Defined Input) */}
+        <div className="flex items-center gap-6 border-b border-gray-100 pb-3">
+          <label className="w-14 text-xs font-medium text-gray-400 shrink-0">From</label>
+          <input
+            type="text"
+            value={fromEmail}
+            onChange={(e) => setFromEmail(e.target.value)}
+            placeholder="e.g. sender@company.com or Your Name <sender@company.com>"
+            className="flex-1 text-xs text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent font-medium"
+          />
         </div>
+
 
         {/* To Row (Recipients + Upload List) */}
         <div className="flex items-start justify-between gap-4">
