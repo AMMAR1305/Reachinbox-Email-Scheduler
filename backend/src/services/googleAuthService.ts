@@ -9,11 +9,13 @@ const googleCallbackUrl =
   process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback';
 const jwtSecret = process.env.JWT_SECRET || 'reachinbox_secret';
 
-export const oAuth2Client = new OAuth2Client(
-  googleClientId,
-  googleClientSecret,
-  googleCallbackUrl
-);
+export function getOAuth2Client(): OAuth2Client {
+  return new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID || '',
+    process.env.GOOGLE_CLIENT_SECRET || '',
+    process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback'
+  );
+}
 
 export function getGoogleAuthUrl(): string {
   const scopes = [
@@ -21,28 +23,18 @@ export function getGoogleAuthUrl(): string {
     'https://www.googleapis.com/auth/userinfo.email',
   ];
 
-  if (googleClientId && !googleClientId.startsWith('mock-')) {
-    return oAuth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: scopes,
-      prompt: 'select_account consent',
-    });
-  }
-
-  // Real Google OAuth URL with prompt so user sees Google authentication
-  const clientId = googleClientId || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-    clientId
-  )}&redirect_uri=${encodeURIComponent(
-    googleCallbackUrl
-  )}&response_type=code&scope=${encodeURIComponent(
-    scopes.join(' ')
-  )}&access_type=offline&prompt=select_account%20consent`;
+  const client = getOAuth2Client();
+  return client.generateAuthUrl({
+    access_type: 'offline',
+    scope: scopes,
+    prompt: 'select_account consent',
+  });
 }
 
 export async function processGoogleCallback(code: string) {
-  const { tokens } = await oAuth2Client.getToken(code);
-  oAuth2Client.setCredentials(tokens);
+  const client = getOAuth2Client();
+  const { tokens } = await client.getToken(code);
+  client.setCredentials(tokens);
 
   // Fetch Google User Profile
   const profileRes = await axios.get(
@@ -57,6 +49,7 @@ export async function processGoogleCallback(code: string) {
   if (!email) {
     throw new Error('Google OAuth failed: User email not provided by Google');
   }
+
 
   // Upsert User in PostgreSQL
   const user = await prisma.user.upsert({

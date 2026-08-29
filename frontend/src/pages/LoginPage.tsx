@@ -9,6 +9,21 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get('error');
+    if (err === 'oauth_processing_failed') {
+      setError(
+        'Google OAuth callback failed. Please ensure http://localhost:5000/api/auth/google/callback is added to Authorized Redirect URIs in your Google Cloud Console, or log in with Email & Password below.'
+      );
+    } else if (err === 'oauth_cancelled') {
+      setError('Google login was cancelled.');
+    } else if (err) {
+      setError(`Authentication error: ${err}`);
+    }
+  }, []);
+
+
   const handleGoogleLogin = () => {
     window.location.href = '/api/auth/google';
   };
