@@ -89,13 +89,15 @@ export const EmailDetailPage: React.FC<EmailDetailPageProps> = ({ email, onBack 
             <img
               src={user.avatar}
               alt={user.name}
+              referrerPolicy="no-referrer"
               className="w-8 h-8 rounded-full object-cover border border-gray-200"
             />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-              {user?.name ? user.name[0] : 'U'}
+            <div className="w-8 h-8 rounded-full bg-[#00a859] text-white flex items-center justify-center font-bold text-xs">
+              {user?.name ? user.name[0].toUpperCase() : 'A'}
             </div>
           )}
+
         </div>
       </div>
 

@@ -21,6 +21,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  const getInitials = (name?: string, email?: string) => {
+    if (name && name.trim()) {
+      const parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.slice(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    return 'AH';
+  };
 
   return (
     <aside className="w-64 bg-white border-r border-gray-100 min-h-screen p-5 flex flex-col justify-between shrink-0">
@@ -39,15 +54,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-[#f4f6f8] hover:bg-gray-200/70 transition-colors text-left"
           >
             <div className="flex items-center gap-3 min-w-0">
-              {user?.avatar ? (
+              {user?.avatar && !avatarError ? (
                 <img
                   src={user.avatar}
                   alt={user.name}
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarError(true)}
                   className="w-9 h-9 rounded-full object-cover shrink-0 border border-white shadow-sm"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
-                  {user?.name ? user.name[0].toUpperCase() : 'U'}
+                <div className="w-9 h-9 rounded-full bg-[#00a859] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                  {getInitials(user?.name, user?.email)}
                 </div>
               )}
               <div className="min-w-0 flex-1">
@@ -61,6 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 ml-1" />
           </button>
+
 
           {/* User Menu Dropdown */}
           {showUserMenu && (
