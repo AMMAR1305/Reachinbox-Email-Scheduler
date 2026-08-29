@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Slack, CheckCircle2, AlertCircle, Send, Trash2, Link } from 'lucide-react';
+import { Slack, CheckCircle2, AlertCircle, Send, Trash2, Link, Zap } from 'lucide-react';
 
 export const SlackSettingsPage: React.FC = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
+
   const [status, setStatus] = useState<{
     connected: boolean;
     integration: {
       hasWebhook: boolean;
+      hasAccessToken?: boolean;
       channelId?: string;
       teamName?: string;
       connectedAt?: string;
@@ -32,7 +34,29 @@ export const SlackSettingsPage: React.FC = () => {
 
   useEffect(() => {
     fetchSlackStatus();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('connected') === 'true') {
+      setMsg({ type: 'success', text: 'Slack OAuth connection successful!' });
+    } else if (params.get('error')) {
+      setMsg({ type: 'error', text: `Slack connection error: ${params.get('error')}` });
+    }
   }, []);
+
+
+  const handleOAuthConnect = async () => {
+    try {
+      setSaving(true);
+      const res = await api.get('/slack/auth-url');
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      }
+    } catch (err: any) {
+      setMsg({ type: 'error', text: 'Failed to initiate Slack OAuth flow. Check SLACK_CLIENT_ID.' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSaveWebhook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +71,7 @@ export const SlackSettingsPage: React.FC = () => {
     try {
       setSaving(true);
       setMsg(null);
-      await api.post('/slack/webhook', { webhookUrl });
+      await api.post('/slack/connect', { webhookUrl });
       setMsg({ type: 'success', text: 'Slack Incoming Webhook connected successfully!' });
       setWebhookUrl('');
       fetchSlackStatus();
@@ -125,7 +149,7 @@ export const SlackSettingsPage: React.FC = () => {
               </div>
               <div className="text-xs text-slate-400">
                 {status.connected
-                  ? `Active connection via Webhook / OAuth`
+                  ? `Active connection: ${status.integration?.teamName || status.integration?.channelId || 'Webhook'}`
                   : 'No active Slack connection for your account.'}
               </div>
             </div>
@@ -153,15 +177,45 @@ export const SlackSettingsPage: React.FC = () => {
           )}
         </div>
 
+        {/* OAuth One-Click Option */}
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>Connect via Slack OAuth (1-Click)</span>
+            </h4>
+            <p className="text-xs text-slate-400">
+              Authorize ReachInbox directly with your Slack workspace workspace permissions.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleOAuthConnect}
+            disabled={saving}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs border border-slate-700 transition-all flex items-center gap-2 shadow"
+          >
+            <Slack className="w-4 h-4 text-brand-400" />
+            <span>Connect Slack OAuth</span>
+          </button>
+        </div>
+
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-slate-800"></div>
+          <span className="flex-shrink mx-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Or Use Incoming Webhook
+          </span>
+          <div className="flex-grow border-t border-slate-800"></div>
+        </div>
+
         {/* Webhook Connection Form */}
-        <form onSubmit={handleSaveWebhook} className="space-y-4 pt-2 border-t border-slate-800">
+        <form onSubmit={handleSaveWebhook} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Link className="w-3.5 h-3.5 text-brand-400" />
               <span>Slack Incoming Webhook URL</span>
             </label>
             <p className="text-xs text-slate-400">
-              Create a Webhook in your Slack workspace and paste the URL below.
+              Create an Incoming Webhook in your Slack channel and paste the URL below.
             </p>
           </div>
 
@@ -204,3 +258,4 @@ export const SlackSettingsPage: React.FC = () => {
     </div>
   );
 };
+

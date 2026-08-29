@@ -1,10 +1,13 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { WebClient } from '@slack/web-api';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { prisma } from '../db/prisma';
 import { sendSlackNotification } from '../services/slackService';
 
 const slackClientId = process.env.SLACK_CLIENT_ID || '';
+const slackClientSecret = process.env.SLACK_CLIENT_SECRET || '';
 const slackRedirectUri = process.env.SLACK_REDIRECT_URI || 'http://localhost:5000/api/slack/callback';
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
 export async function getSlackAuthUrl(req: AuthenticatedRequest, res: Response) {
   const scope = 'chat:write,chat:write.public,incoming-webhook';
@@ -13,6 +16,64 @@ export async function getSlackAuthUrl(req: AuthenticatedRequest, res: Response) 
   )}&redirect_uri=${encodeURIComponent(slackRedirectUri)}&state=${req.user!.id}`;
 
   return res.json({ url });
+}
+
+export async function redirectToSlackOAuth(req: AuthenticatedRequest, res: Response) {
+  const scope = 'chat:write,chat:write.public,incoming-webhook';
+  const url = `https://slack.com/oauth/v2/authorize?client_id=${slackClientId}&scope=${encodeURIComponent(
+    scope
+  )}&redirect_uri=${encodeURIComponent(slackRedirectUri)}&state=${req.user!.id}`;
+
+  return res.redirect(url);
+}
+
+
+export async function handleSlackOAuthCallback(req: Request, res: Response) {
+  try {
+    const { code, state: userId, error } = req.query;
+
+    if (error) {
+      return res.redirect(`${clientUrl}/slack-settings?error=${encodeURIComponent(String(error))}`);
+    }
+
+    if (!code || !userId) {
+      return res.redirect(`${clientUrl}/slack-settings?error=missing_code_or_user`);
+    }
+
+    const client = new WebClient();
+    const result = await client.oauth.v2.access({
+      client_id: slackClientId,
+      client_secret: slackClientSecret,
+      code: String(code),
+      redirect_uri: slackRedirectUri,
+    });
+
+    if (!result.ok) {
+      return res.redirect(`${clientUrl}/slack-settings?error=${encodeURIComponent(result.error || 'oauth_failed')}`);
+    }
+
+    await prisma.slackIntegration.upsert({
+      where: { userId: String(userId) },
+      update: {
+        accessToken: result.access_token,
+        webhookUrl: (result.incoming_webhook as any)?.url || null,
+        channelId: (result.incoming_webhook as any)?.channel || result.incoming_webhook?.channel_id || '#general',
+        teamName: (result.team as any)?.name || null,
+      },
+      create: {
+        userId: String(userId),
+        accessToken: result.access_token,
+        webhookUrl: (result.incoming_webhook as any)?.url || null,
+        channelId: (result.incoming_webhook as any)?.channel || result.incoming_webhook?.channel_id || '#general',
+        teamName: (result.team as any)?.name || null,
+      },
+    });
+
+    return res.redirect(`${clientUrl}/slack-settings?connected=true`);
+  } catch (error: any) {
+    console.error('Slack OAuth Callback Error:', error);
+    return res.redirect(`${clientUrl}/slack-settings?error=server_error`);
+  }
 }
 
 export async function getSlackStatus(req: AuthenticatedRequest, res: Response) {
@@ -36,6 +97,7 @@ export async function getSlackStatus(req: AuthenticatedRequest, res: Response) {
         teamName: slackIntegration.teamName,
         channelId: slackIntegration.channelId,
         hasWebhook: !!slackIntegration.webhookUrl,
+        hasAccessToken: !!slackIntegration.accessToken,
         connectedAt: slackIntegration.connectedAt,
       },
     });
@@ -77,6 +139,9 @@ export async function saveSlackWebhook(req: AuthenticatedRequest, res: Response)
     return res.status(500).json({ error: 'Save Failed', message: 'Failed to save Slack webhook.' });
   }
 }
+
+// Alias for saveSlackWebhook / connect
+export const connectSlack = saveSlackWebhook;
 
 export async function disconnectSlack(req: AuthenticatedRequest, res: Response) {
   try {
@@ -120,3 +185,4 @@ export async function sendTestSlackAlert(req: AuthenticatedRequest, res: Respons
     return res.status(500).json({ error: 'Test Failed', message: 'Failed to send Slack test notification.' });
   }
 }
+

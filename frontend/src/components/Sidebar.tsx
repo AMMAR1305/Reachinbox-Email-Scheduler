@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Clock, Send, Plus, ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
+import { Clock, Send, Plus, ChevronDown, LogOut, Slack, Activity } from 'lucide-react';
 
-export type ActiveTab = 'scheduled' | 'sent' | 'compose' | 'detail';
+export type ActiveTab = 'scheduled' | 'sent' | 'compose' | 'detail' | 'slack' | 'health';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -129,6 +129,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs font-semibold text-gray-400">{sentCount}</span>
           </button>
         </div>
+
+        {/* SETTINGS & INTEGRATIONS Section */}
+        <div className="space-y-1 pt-2">
+          <div className="px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            INTEGRATIONS & SYSTEM
+          </div>
+
+          {/* Slack Settings */}
+          <button
+            onClick={() => setActiveTab('slack')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              activeTab === 'slack'
+                ? 'bg-[#e6f4ea] text-emerald-800 font-semibold'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Slack className="w-4 h-4 text-[#4A154B]" />
+              <span>Slack Settings</span>
+            </div>
+          </button>
+
+          {/* System Health */}
+          <button
+            onClick={() => setActiveTab('health')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              activeTab === 'health'
+                ? 'bg-[#e6f4ea] text-emerald-800 font-semibold'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Activity className="w-4 h-4 text-emerald-600" />
+              <span>System Health</span>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Footer Info */}
@@ -138,3 +175,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+
