@@ -49,22 +49,25 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const filtered = parsed.filter((e: string) => e !== 'md.ammar1305@gmail.com');
+          if (filtered.length > 0) return filtered;
+        }
       } catch (e) {}
     }
     const defaultList = [
-      user?.email || 'md.ammar1305@gmail.com',
       'kayleigh67@ethereal.email',
       'support@reachinbox.ai',
       'team@reachinbox.ai',
-    ].filter(Boolean);
-    return Array.from(new Set(defaultList));
+    ];
+    return defaultList;
   });
 
-  const [fromEmail, setFromEmail] = useState<string>(() => user?.email || 'md.ammar1305@gmail.com');
+  const [fromEmail, setFromEmail] = useState<string>('kayleigh67@ethereal.email');
   const [isFromDropdownOpen, setIsFromDropdownOpen] = useState(false);
   const [newFromInput, setNewFromInput] = useState('');
   const [isAddingFromEmail, setIsAddingFromEmail] = useState(false);
+
 
   const [recipients, setRecipients] = useState<string[]>([]);
   const [recipientInput, setRecipientInput] = useState('');
@@ -277,18 +280,14 @@ export const ComposeEmailPage: React.FC<ComposeEmailPageProps> = ({ onBack, onSu
           </button>
 
           <button
-            onClick={() => {
-              if (isSendLaterOpen) {
-                handleScheduleSubmit();
-              } else {
-                setIsSendLaterOpen(true);
-              }
-            }}
+            type="button"
+            onClick={handleScheduleSubmit}
             disabled={loading}
-            className="py-1.5 px-4 rounded-full border border-emerald-500 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 font-semibold text-xs transition-all duration-200 shadow-sm"
+            className="py-1.5 px-5 rounded-full border border-emerald-500 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 font-semibold text-xs transition-all duration-200 shadow-sm"
           >
-            {loading ? 'Sending...' : 'Send Later'}
+            {loading ? 'Sending...' : 'Send'}
           </button>
+
 
           {/* Send Later Floating Popover Modal */}
           {isSendLaterOpen && (
