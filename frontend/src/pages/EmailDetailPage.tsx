@@ -62,18 +62,19 @@ export const EmailDetailPage: React.FC<EmailDetailPageProps> = ({ email, onBack 
         </div>
 
         <div className="flex items-center gap-3 text-gray-400 flex-wrap">
-          {/* View in Ethereal Dashboard Button */}
+          {/* View Preview Button */}
           <a
             href={etherealUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="px-3 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
-            title="Open Ethereal Email Preview"
+            title="Open Email Preview"
           >
             <Mail className="w-3.5 h-3.5 text-emerald-600" />
-            <span>View in Ethereal Dashboard</span>
+            <span>Preview</span>
             <ExternalLink className="w-3 h-3 text-emerald-600 ml-0.5" />
           </a>
+
 
           <button className="hover:text-amber-400 transition-colors p-1" title="Star">
             <Star className="w-4 h-4" />
