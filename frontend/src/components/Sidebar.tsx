@@ -86,10 +86,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Compose Button */}
         <button
           onClick={onOpenCompose}
-          className="w-full py-2.5 px-4 rounded-full border border-emerald-500 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-sm"
+          className={`w-full py-2.5 px-4 rounded-full border font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-sm ${
+            activeTab === 'compose'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-500/20'
+              : 'border-emerald-500 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100'
+          }`}
         >
           <span>Compose</span>
         </button>
+
 
         {/* CORE Navigation Section */}
         <div className="space-y-1 pt-2">
@@ -129,43 +134,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs font-semibold text-gray-400">{sentCount}</span>
           </button>
         </div>
-
-        {/* SETTINGS & INTEGRATIONS Section */}
-        <div className="space-y-1 pt-2">
-          <div className="px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-            INTEGRATIONS & SYSTEM
-          </div>
-
-          {/* Slack Settings */}
-          <button
-            onClick={() => setActiveTab('slack')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              activeTab === 'slack'
-                ? 'bg-[#e6f4ea] text-emerald-800 font-semibold'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Slack className="w-4 h-4 text-[#4A154B]" />
-              <span>Slack Settings</span>
-            </div>
-          </button>
-
-          {/* System Health */}
-          <button
-            onClick={() => setActiveTab('health')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              activeTab === 'health'
-                ? 'bg-[#e6f4ea] text-emerald-800 font-semibold'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Activity className="w-4 h-4 text-emerald-600" />
-              <span>System Health</span>
-            </div>
-          </button>
-        </div>
       </div>
 
       {/* Footer Info */}
@@ -175,4 +143,5 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+
 

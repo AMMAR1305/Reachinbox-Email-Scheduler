@@ -60,13 +60,18 @@ export async function sendEmailViaEthereal(
 ): Promise<SendEmailResult> {
   const transporter = await getTransporter();
 
+  const defaultFrom = process.env.SMTP_USER
+    ? `"ReachInbox Email Scheduler" <${process.env.SMTP_USER}>`
+    : '"ReachInbox Email Scheduler" <scheduler@reachinbox.ai>';
+
   const mailOptions = {
-    from: params.from || '"ReachInbox Email Scheduler" <scheduler@reachinbox.ai>',
+    from: params.from || defaultFrom,
     to: params.to,
     subject: params.subject,
     html: params.body,
     text: params.body.replace(/<[^>]*>?/gm, ''), // Strip HTML for text alternative
   };
+
 
   const info = await transporter.sendMail(mailOptions);
   const previewUrl = nodemailer.getTestMessageUrl(info) || null;
