@@ -1,0 +1,100 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum EmailJobStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+  RESCHEDULED
+}
+
+model User {
+  id               String            @id @default(uuid())
+  googleId         String            @unique
+  email            String            @unique
+  name             String
+  avatar           String?
+  password         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  emailJobs        EmailJob[]
+  sentEmails       SentEmail[]
+  slackIntegration SlackIntegration?
+  senderAccounts   SenderAccount[]
+}
+
+model SenderAccount {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  name      String
+  host      String     @default("smtp.ethereal.email")
+  port      Int        @default(587)
+  username  String
+  password  String
+  createdAt DateTime   @default(now())
+  emailJobs EmailJob[]
+}
+
+model EmailJob {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderAccountId String?
+  senderAccount   SenderAccount? @relation(fields: [senderAccountId], references: [id], onDelete: SetNull)
+  recipients      String[]
+  subject         String
+  body            String
+  scheduledAt     DateTime
+  sentAt          DateTime?
+  delaySeconds    Int            @default(0)
+  hourlyLimit     Int            @default(50)
+  status          EmailJobStatus @default(PENDING)
+  errorMessage    String?
+  idempotencyKey  String         @unique
+  bullJobId       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  sentEmails      SentEmail[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model SentEmail {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailJobId    String
+  emailJob      EmailJob @relation(fields: [emailJobId], references: [id], onDelete: Cascade)
+  recipient     String
+  subject       String
+  body          String
+  etherealMsgId String?
+  previewUrl    String?
+  sentAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([recipient])
+}
+
+model SlackIntegration {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken String?
+  webhookUrl  String?
+  channelId   String?
+  teamName    String?
+  connectedAt DateTime @default(now())
+}
