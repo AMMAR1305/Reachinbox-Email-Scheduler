@@ -24,9 +24,23 @@ app.use(
   })
 );
 
+// Support multiple allowed origins: local dev + Vercel production
+const allowedOrigins = [
+  env.FRONTEND_URL,
+  'http://localhost:5173',
+  'https://civic-connect-liard-xi.vercel.app',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow server-to-server (no origin) and any whitelisted origin
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

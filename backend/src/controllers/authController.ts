@@ -8,6 +8,7 @@ import {
 } from '../services/googleAuthService';
 import { prisma } from '../db/prisma';
 
+// In production set FRONTEND_URL=https://civic-connect-liard-xi.vercel.app on Render
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 export async function handleGoogleRedirect(req: AuthenticatedRequest, res: Response) {

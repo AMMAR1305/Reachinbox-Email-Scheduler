@@ -2,19 +2,28 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+// Google OAuth must redirect through the BACKEND, not through Vite's proxy.
+// In production VITE_API_URL = https://civicconnect-dibt.onrender.com
+// In dev the proxy handles /api → localhost:5000 so we use relative URL.
+const BACKEND_URL = import.meta.env.VITE_API_URL || '';
+
 export const LoginPage: React.FC = () => {
   const { checkAuth } = useAuth();
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const err = params.get('error');
     if (err === 'oauth_processing_failed') {
       setError(
-        'Google OAuth callback failed. Please ensure http://localhost:5000/api/auth/google/callback is added to Authorized Redirect URIs in your Google Cloud Console, or log in with Email & Password below.'
+        'Google OAuth callback failed. Please ensure the Render backend callback URL is added to Authorized Redirect URIs in your Google Cloud Console, or log in with Email & Password below.'
       );
     } else if (err === 'oauth_cancelled') {
       setError('Google login was cancelled.');
@@ -23,125 +32,223 @@ export const LoginPage: React.FC = () => {
     }
   }, []);
 
-
-  const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
+  const switchMode = (next: 'login' | 'signup') => {
+    setMode(next);
+    setError(null);
+    setSuccessMsg(null);
+    setName('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  // Google OAuth goes directly to the backend (bypasses Vite proxy in production)
+  const handleGoogleLogin = () => {
+    window.location.href = `${BACKEND_URL}/api/auth/google`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setError('Please enter your Email ID.');
-      return;
-    }
-    if (!password.trim()) {
-      setError('Please enter your Password.');
-      return;
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!email.trim()) { setError('Please enter your Email ID.'); return; }
+    if (!password.trim()) { setError('Please enter your Password.'); return; }
+
+    if (mode === 'signup') {
+      if (!name.trim()) { setError('Please enter your full name.'); return; }
+      if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     }
 
     try {
       setLoading(true);
-      setError(null);
-      await api.post('/auth/login', { email, password });
+      // The backend /auth/login auto-creates a new user if one does not exist,
+      // so we use the same endpoint for both login and sign-up.
+      await api.post('/auth/login', {
+        email: email.trim().toLowerCase(),
+        password,
+        ...(mode === 'signup' ? { name: name.trim() } : {}),
+      });
       await checkAuth();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      const msg = err.response?.data?.message;
+      setError(msg || (mode === 'signup' ? 'Sign up failed. Please try again.' : 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
-      {/* Centered Login Card */}
-      <div className="w-full max-w-[420px] bg-white rounded-2xl border border-gray-100 shadow-[0_4px_25px_rgba(0,0,0,0.06)] p-8 sm:p-10 space-y-7">
-        
-        {/* Title */}
-        <h1 className="text-2xl sm:text-[28px] font-bold text-gray-900 text-center tracking-tight">
-          Login
-        </h1>
+    <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
+      {/* Card */}
+      <div className="w-full max-w-[440px] bg-white rounded-2xl border border-gray-100 shadow-[0_4px_30px_rgba(0,0,0,0.08)] overflow-hidden">
 
-        {/* Google OAuth CTA Button */}
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="w-full py-3 px-4 rounded-xl bg-[#e6f4ea] hover:bg-[#d8eedd] text-gray-800 font-medium text-sm transition-all duration-200 flex items-center justify-center gap-3 border border-[#cbe6d2]"
-        >
-          {/* Google G SVG */}
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-            />
-          </svg>
-          <span>Login with Google</span>
-        </button>
-
-        {/* Divider */}
-        <div className="relative flex items-center justify-center">
-          <div className="border-t border-gray-200 w-full" />
-          <span className="bg-white px-3 text-xs text-gray-400 font-normal whitespace-nowrap">
-            or sign up through email
-          </span>
-          <div className="border-t border-gray-200 w-full" />
+        {/* Tab switcher */}
+        <div className="flex border-b border-gray-100">
+          <button
+            id="tab-login"
+            type="button"
+            onClick={() => switchMode('login')}
+            className={`flex-1 py-4 text-sm font-semibold transition-colors duration-200 ${
+              mode === 'login'
+                ? 'text-[#00a859] border-b-2 border-[#00a859] bg-white'
+                : 'text-gray-400 hover:text-gray-600 bg-gray-50'
+            }`}
+          >
+            Login
+          </button>
+          <button
+            id="tab-signup"
+            type="button"
+            onClick={() => switchMode('signup')}
+            className={`flex-1 py-4 text-sm font-semibold transition-colors duration-200 ${
+              mode === 'signup'
+                ? 'text-[#00a859] border-b-2 border-[#00a859] bg-white'
+                : 'text-gray-400 hover:text-gray-600 bg-gray-50'
+            }`}
+          >
+            Sign Up
+          </button>
         </div>
 
-        {/* Email & Password Form */}
-        <form onSubmit={handleEmailLogin} className="space-y-4">
-          <div>
+        <div className="p-8 sm:p-10 space-y-6">
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-gray-900 text-center tracking-tight">
+            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+          </h1>
+
+          {/* Google OAuth CTA */}
+          <button
+            id="btn-google-oauth"
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full py-3 px-4 rounded-xl bg-[#e6f4ea] hover:bg-[#d8eedd] text-gray-800 font-medium text-sm transition-all duration-200 flex items-center justify-center gap-3 border border-[#cbe6d2]"
+          >
+            {/* Google G SVG */}
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>{mode === 'login' ? 'Login with Google' : 'Sign up with Google'}</span>
+          </button>
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center gap-3">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="text-xs text-gray-400 font-normal whitespace-nowrap">
+              or {mode === 'login' ? 'login' : 'sign up'} with email
+            </span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          {/* Form */}
+          <form id={`form-${mode}`} onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Name field — signup only */}
+            {mode === 'signup' && (
+              <input
+                id="input-name"
+                type="text"
+                value={name}
+                autoComplete="name"
+                onChange={(e) => { setName(e.target.value); if (error) setError(null); }}
+                placeholder="Full Name"
+                className="w-full px-4 py-3 rounded-xl bg-[#f0f3f2] border border-transparent text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
+              />
+            )}
+
             <input
+              id="input-email"
               type="email"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (error) setError(null);
-              }}
+              autoComplete="email"
+              onChange={(e) => { setEmail(e.target.value); if (error) setError(null); }}
               placeholder="Email ID"
               className="w-full px-4 py-3 rounded-xl bg-[#f0f3f2] border border-transparent text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
             />
-          </div>
 
-          <div>
             <input
+              id="input-password"
               type="password"
               value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (error) setError(null);
-              }}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }}
               placeholder="Password"
               className="w-full px-4 py-3 rounded-xl bg-[#f0f3f2] border border-transparent text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
             />
-          </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg text-center font-medium">
-              {error}
-            </div>
-          )}
+            {/* Confirm password — signup only */}
+            {mode === 'signup' && (
+              <input
+                id="input-confirm-password"
+                type="password"
+                value={confirmPassword}
+                autoComplete="new-password"
+                onChange={(e) => { setConfirmPassword(e.target.value); if (error) setError(null); }}
+                placeholder="Confirm Password"
+                className="w-full px-4 py-3 rounded-xl bg-[#f0f3f2] border border-transparent text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
+              />
+            )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 px-4 rounded-xl bg-[#00a859] hover:bg-[#00964f] active:bg-[#008746] text-white font-semibold text-sm shadow-sm transition-all duration-200 flex items-center justify-center"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+            {/* Success message */}
+            {successMsg && (
+              <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg text-center font-medium">
+                {successMsg}
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg text-center font-medium">
+                {error}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              id={`btn-submit-${mode}`}
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-4 rounded-xl bg-[#00a859] hover:bg-[#00964f] active:bg-[#008746] text-white font-semibold text-sm shadow-sm transition-all duration-200 flex items-center justify-center disabled:opacity-60"
+            >
+              {loading
+                ? mode === 'signup' ? 'Creating account...' : 'Logging in...'
+                : mode === 'signup' ? 'Create Account' : 'Login'}
+            </button>
+          </form>
+
+          {/* Bottom switch link */}
+          <p className="text-center text-xs text-gray-500">
+            {mode === 'login' ? (
+              <>
+                Don't have an account?{' '}
+                <button
+                  id="link-goto-signup"
+                  type="button"
+                  onClick={() => switchMode('signup')}
+                  className="text-[#00a859] font-semibold hover:underline"
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <button
+                  id="link-goto-login"
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="text-[#00a859] font-semibold hover:underline"
+                >
+                  Login
+                </button>
+              </>
+            )}
+          </p>
+        </div>
       </div>
     </div>
   );
