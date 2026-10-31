@@ -1,14 +1,11 @@
 import axios from 'axios';
 
-// In production (Vercel), VITE_API_URL is set to the Render backend URL.
-// In local dev, it is not set so we fall back to '/api' which Vite's proxy
-// forwards to http://localhost:5000.
-const BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
-
+// baseURL is always '/api'.
+// - In local dev: Vite's proxy (vite.config.ts) forwards /api → http://localhost:5000
+// - In production (Vercel): vercel.json rewrites /api/* → https://civicconnect-dibt.onrender.com/api/*
+// No environment variable is required.
 export const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

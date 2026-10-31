@@ -2,10 +2,6 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
-// Google OAuth must redirect through the BACKEND, not through Vite's proxy.
-// In production VITE_API_URL = https://civicconnect-dibt.onrender.com
-// In dev the proxy handles /api → localhost:5000 so we use relative URL.
-const BACKEND_URL = import.meta.env.VITE_API_URL || '';
 
 export const LoginPage: React.FC = () => {
   const { checkAuth } = useAuth();
@@ -42,9 +38,10 @@ export const LoginPage: React.FC = () => {
     setConfirmPassword('');
   };
 
-  // Google OAuth goes directly to the backend (bypasses Vite proxy in production)
+  // Google OAuth: /api/auth/google is proxied to Render backend
+  // by vercel.json in production and by Vite proxy in local dev.
   const handleGoogleLogin = () => {
-    window.location.href = `${BACKEND_URL}/api/auth/google`;
+    window.location.href = '/api/auth/google';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
